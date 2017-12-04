@@ -1,0 +1,166 @@
+<!DOCTYPE HTML>
+<hfaseAtuall>
+	<head>
+		<meta charset="UTF-8">
+		<title>Frogger 3D</title>
+		<style>
+			body {
+				margin: 0; 
+				overflow: hidden;
+			}
+			canvas { width: 100%; height: 100%;}
+			#qttSapos{
+				position: absolute;
+				left: 15px;
+				top: 40px;
+				font-size: 30pt;
+				font-family: Arial;
+				color: white;
+			}
+		</style>
+	</head>
+	<body>
+		<script src="./js/three.min.js"></script>
+		<script src="./js/OBJLoader.js"></script>
+		<script src="./js/stats.min.js"></script>
+		<script type="text/javascript" src="./js/jquery-3.2.1.min.js"></script>
+		<script type="text/javascript" src="./js/utils.js"></script>
+		<script type="text/javascript" src="./js/BoxCollider.js"></script>
+		<script type="text/javascript" src="./js/CameraController.js"></script>
+		<script type="text/javascript" src="./js/ModelsLoader.js"></script>
+		<script type="text/javascript" src="./js/Passagem.js"></script>
+		<script type="text/javascript" src="./js/Fase.js"></script>
+		<script type="text/javascript" src="./js/Frogger.js"></script>
+		<script type="text/javascript" src="./js/Obstacle.js"></script>
+		
+		<div id="qttSapos">
+		</div>
+		<script>
+			
+			var VIEW_ANGLE = 45, 
+			ASPECT = window.innerWidth / window.innerHeight, 
+			NEAR = 0.1, 
+			FAR = 1000;
+			var camera, scene, dirLight, d, fase, c;
+			var pontos = 0;
+			var mortes = 0;
+			
+			var renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+			stats = new Stats();
+			document.body.appendChild( renderer.domElement );
+			document.body.appendChild( stats.dom );
+		
+			//ETAPAS
+			var modelosCarregados = false;
+			var montarCenario = true;
+			var jogar = false;
+			var objects = Array();
+			var qttObjects = 0;
+		
+			var ml = new ModelsLoader(loaderOBJ, loaderIMG);
+			ml.addModelUrl("car", "models/car.obj", "textures/car.png", true, 1, 0.8, 0.04);
+			ml.addModelUrl("caminhao", "models/caminhao.obj", "textures/caminhao.png", true, 1, 0.85, 0.05);
+			ml.addModelUrl("grass", "models/grama.obj", "textures/grama.png");
+			ml.addModelUrl("turtle", "models/turtle.obj", "textures/turtle.png", true, 1, 0.1, 0.005);
+			ml.addModelUrl("tronco", "models/tronco.obj", "textures/tronco.png", true, 1, 0.8, 0.005);
+			ml.addModelUrl("frogger", "models/frogger.obj", "textures/frogger.png");
+			ml.addModelUrl("life", "models/life.obj", "textures/life.png");
+			ml.loadAll();
+		
+			function init(){
+				objects = Array();
+				camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x0000 );
+				scene.fog = new THREE.Fog( 0x59472b, 1000, FAR );
+				scene.fog = new THREE.Fog( scene.background, 1, 5000 );
+				
+				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+				dirLight.color.setHSL( 0.1, 1, 0.95 );
+				dirLight.position.set( -1, 1.75, 1 );
+				dirLight.position.multiplyScalar( 100 );
+				scene.add( dirLight );
+				dirLight.castShadow = true;
+				dirLight.shadow.mapSize.width = 2048;
+				dirLight.shadow.mapSize.height = 2048;
+				d = 50;
+				dirLight.shadow.camera.left = -d;
+				dirLight.shadow.camera.right = d;
+				dirLight.shadow.camera.top = d;
+				dirLight.shadow.camera.bottom = -d;
+				dirLight.shadow.camera.far = 500;
+				dirLight.shadow.bias = -0.0001;
+				
+				
+				camera.position.z = 20;
+				camera.position.y = -15;
+				camera.rotation.x += 0.6;
+			}
+			var cl = false;
+			var qttprecisaAtravessar = 0;
+			var faseAtual = 1;
+			var Tamanho = faseAtual+2;
+			var hAtual = 4;
+			var checkpointSapos = Array();
+			var exibirMensagem = false;
+			var msg = "";
+			var animate = function () {
+				requestAnimationFrame(animate);
+				if(modelosCarregados){
+					if(montarCenario){
+						init();
+						fase = new Fase(scene, Tamanho, hAtual);
+						fase.generateRandom();
+						frogger = new Frogger(scene);
+						cc = new CameraController(camera,frogger.model);
+						montarCenario = false;
+						jogar = true;
+						if(faseAtual%4 == 0){
+							hAtual++;
+						}
+						if(faseAtual%6 == 0){
+							Tamanho++;
+						}
+					}else if(jogar){
+						var info = "Fase: "+faseAtual+ 
+						"<br>Sapos: " +fase.saposAtravessaram+"/"+qttprecisaAtravessar+
+						"<br>Pontos: " +pontos+"00"+
+						"<br>Mortes: " +mortes;
+						if(exibirMensagem){
+							info+="<br><br>"+msg;
+							setTimeout(function(){exibirMensagem = false;}, 2500);
+						}
+						$("#qttSapos").html(info);
+						if(fase.saposAtravessaram == qttprecisaAtravessar){
+							montarCenario = true;
+							jogar = false;
+							qttprecisaAtravessar = 0;
+							faseAtual++;
+							pontos+=4
+							checkpointSapos = Array();
+						}
+						if(jogar){
+							if(cameraSelected){
+								cc.selected = true;
+							}else{
+								cc.selected = false;
+								if(frogger != undefined){
+									frogger.animate();
+								}
+							}
+							cc.animate();
+							fase.animate();
+							renderer.render(scene, camera);
+						}
+					}
+				}
+				stats.update();
+			};
+
+			animate();
+		</script>
+	</body>
+</hfaseAtuall>
